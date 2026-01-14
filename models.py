@@ -15,6 +15,16 @@ class Investigator(SQLModel, table=True):
     gender: str = Field(default="")
     age: int = Field(default=20)
 
+    # --- 新增字段 ---
+    # 1. 队伍/分组 (用于 KP 面板分队，默认都叫'Alpha')
+    team_name: str = Field(default="Alpha")
+
+    # 2. 卡片类型 (player, npc, monster)
+    card_type: str = Field(default="player")
+
+    # 3. 怪物专属 (如果是怪物，可以使用 build_val 作为体格，这里增加护甲)
+    armor: int = Field(default=0)
+
     # 2. 基本属性
     str_stat: int = Field(default=50)  # 力量
     dex_stat: int = Field(default=50)  # 敏捷

@@ -1,0 +1,13 @@
+<div class="alert alert-info alert-dismissible fade show m-2 p-2" role="alert">
+    <strong>🎲 {{ skill_label }} 检定结果:</strong>
+    <div class="d-flex flex-wrap gap-2 mt-2">
+        {% for item in results %}
+        <span class="badge bg-white border text-dark">
+            {{ item.name }}:
+            <span class="text-{{ item.color }} fw-bold">{{ item.result }}</span>
+            <small class="text-muted">({{ item.dice }}/{{ item.val }})</small>
+        </span>
+        {% endfor %}
+    </div>
+    <button type="button" class="btn-close p-2" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>

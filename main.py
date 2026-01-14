@@ -7,7 +7,7 @@ from sqlmodel import select, Session
 
 from database import create_db_and_tables, get_session
 from models import Investigator
-from routers import investigators, logs
+from routers import investigators, logs, kp
 
 
 # 定义生命周期管理器
@@ -28,13 +28,13 @@ templates = Jinja2Templates(directory="templates")
 # 注册路由
 app.include_router(investigators.router)
 app.include_router(logs.router)
-
+app.include_router(kp.router)
 # --- 页面路由 ---
 
 @app.get("/", response_class=HTMLResponse)
 async def list_investigators(request: Request, session: Session = Depends(get_session)):
     """首页：列出所有调查员"""
-    statement = select(Investigator)
+    statement = select(Investigator).where(Investigator.card_type == "player")
     results = session.exec(statement).all()
     return templates.TemplateResponse("list.html", {"request": request, "investigators": results})
 

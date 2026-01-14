@@ -46,6 +46,30 @@
             <div class="card mb-4 shadow-sm">
                 <div class="card-header"><i class="fas fa-id-card"></i> 基础信息</div>
                 <div class="card-body row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label">卡片类型</label>
+                        <select class="form-select" name="card_type">
+                            <option value="player" {% if inv and inv.card_type =='player' %}selected{% endif %}>🟢 调查员 (PC)</option>
+                            <option value="npc" {% if inv and inv.card_type =='npc' %}selected{% endif %}>🔵 NPC</option>
+                            <option value="monster" {% if inv and inv.card_type =='monster' %}selected{% endif %}>🐙 怪物/敌人</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label">所属队伍/分组</label>
+                        <input type="text" class="form-control" name="team_name"
+                               value="{{ inv.team_name if inv else 'Alpha' }}"
+                               placeholder="如: Alpha, 敌方A队">
+                        <div class="form-text small">用于在KP面板分组显示</div>
+                    </div>
+
+                    <div class="col-md-2">
+                        <label class="form-label">护甲 (怪物)</label>
+                        <input type="number" class="form-control" name="armor" value="{{ inv.armor if inv else 0 }}">
+                    </div>
+
+                    <div class="w-100"></div>
+
                     <div class="col-md-4">
                         <label class="form-label">调查员姓名</label>
                         <input type="text" class="form-control" name="name" value="{{ inv.name if inv else '' }}" required>
