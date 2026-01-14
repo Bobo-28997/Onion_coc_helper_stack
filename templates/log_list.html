@@ -1,0 +1,25 @@
+{% if not logs %}
+    <div class="text-center text-muted mt-5">
+        <i class="fas fa-wind fa-3x mb-3"></i>
+        <p>暂无投掷记录</p>
+    </div>
+{% else %}
+    <div class="list-group list-group-flush">
+        {% for log in logs %}
+        <div class="list-group-item bg-transparent px-0">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <span class="fw-bold text-dark">{{ log.investigator_name }}</span>
+                    <small class="text-muted ms-1">
+                        {{ log.created_at.strftime('%H:%M:%S') }}
+                    </small>
+                    <div class="small text-secondary">{{ log.action_name }}</div>
+                </div>
+                <span class="badge bg-{{ log.result_color }} rounded-pill">
+                    {{ log.result_text }}
+                </span>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+{% endif %}

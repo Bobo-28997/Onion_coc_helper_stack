@@ -1,0 +1,531 @@
+{% extends "base.html" %}
+
+{% block title %}
+    {% if inv %}编辑: {{ inv.name }}{% else %}新建调查员{% endif %}
+{% endblock %}
+
+{% block css %}
+<style>
+    .stat-box { background: white; border: 0px solid #dee2e6; border-radius: 0.375rem; padding: 0.5rem; text-align: center; }
+    .card-header { font-weight: bold; background-color: #e9ecef; }
+    /* 自定义技能的名称输入框样式 */
+    .custom-skill-name {
+        border: none !important;
+        background: transparent;
+        color: #6c757d; /* 与普通Label的颜色一致 */
+        font-size: 0.75rem;
+        padding: 0;
+        padding-top: 0;
+        padding-bottom: 0;
+        margin-bottom: 0px;
+        border-radius: 0;
+        cursor: text;
+        text-align: left;
+    }
+
+    /* 聚焦时稍微加深一点，不要默认的高亮蓝框，保持低调 */
+    .custom-skill-name:focus {
+        outline: none;
+        border-bottom: 0px solid #495057;
+        background: transparent;
+        box-shadow: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <h2 class="mb-4">
+            {% if inv %}📝 编辑角色{% else %}📄 新建角色{% endif %}
+        </h2>
+        
+        <form action="/investigators/save" method="post">
+            <input type="hidden" name="id" value="{{ inv.id if inv else '' }}">
+
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header"><i class="fas fa-id-card"></i> 基础信息</div>
+                <div class="card-body row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">调查员姓名</label>
+                        <input type="text" class="form-control" name="name" value="{{ inv.name if inv else '' }}" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">玩家昵称</label>
+                        <input type="text" class="form-control" name="player_name" value="{{ inv.player_name if inv else '' }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">职业</label>
+                        <input type="text" class="form-control" name="occupation" value="{{ inv.occupation if inv else '' }}">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">性别</label>
+                        <select class="form-select" name="gender">
+                            <option value="男" {% if inv and inv.gender =='男' %}selected{% endif %}>男</option>
+                            <option value="女" {% if inv and inv.gender =='女' %}selected{% endif %}>女</option>
+                            <option value="其他" {% if inv and inv.gender =='其他' %}selected{% endif %}>其他</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">年龄</label>
+                        <input type="number" class="form-control" name="age" value="{{ inv.age if inv else 20 }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">母语</label>
+                        <input type="text" class="form-control" name="mother_tongue" value="{{ inv.mother_tongue if inv else '' }}">
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header"><i class="fas fa-heartbeat"></i> 核心属性</div>
+                <div class="card-body">
+                    <div class="row g-2 justify-content-center">
+                        {% macro stat_input(label, name, value) %}
+                        <div class="col-6 col-md-2">
+                            <div class="stat-box">
+                                <label class="d-block small text-muted mb-1">{{ label }}</label>
+                                <input type="number" class="form-control form-control-sm text-center fw-bold" 
+                                       name="{{ name }}" value="{{ value }}">
+                            </div>
+                        </div>
+                        {% endmacro %}
+
+                        {{ stat_input('力量 STR (3d6)', 'str_stat', inv.str_stat if inv else 50) }}
+                        {{ stat_input('敏捷 DEX (3d6)', 'dex_stat', inv.dex_stat if inv else 50) }}
+                        {{ stat_input('意志 POW (3d6)', 'pow_stat', inv.pow_stat if inv else 50) }}
+                        {{ stat_input('体质 CON (3d6)', 'con_stat', inv.con_stat if inv else 50) }}
+                        {{ stat_input('外貌 APP (3d6)', 'app_stat', inv.app_stat if inv else 50) }}
+                        <div class="w-100"></div>
+                        {{ stat_input('体型 SIZ (2d6+6)', 'siz_stat', inv.siz_stat if inv else 50) }}
+                        {{ stat_input('智力 INT (2d6+6)', 'int_stat', inv.int_stat if inv else 50) }}
+                        {{ stat_input('教育 EDU (2d6+6)', 'edu_stat', inv.edu_stat if inv else 50) }}
+                        {{ stat_input('幸运 LUCK (3d6)', 'luck_stat', inv.luck_stat if inv else 50) }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header"><i class="fas fa-droplet"></i> 当前状态</div>
+                <div class="card-body">
+                    <div class="row g-2 justify-content-center">
+                        {% macro stat_input(label, name, value) %}
+                        <div class="col-6 col-md-2">
+                            <div class="stat-box">
+                                <label class="d-block small text-muted mb-1">{{ label }}</label>
+                                <input type="number" class="form-control form-control-sm text-center fw-bold"
+                                       name="{{ name }}" value="{{ value }}">
+                            </div>
+                        </div>
+                        {% endmacro %}
+
+                        {{ stat_input('生命值', 'hp_current', inv.hp_current if inv else 10) }}
+                        {{ stat_input('魔法值', 'mp_current', inv.mp_current if inv else 10) }}
+                        {{ stat_input('理智值', 'san_current', inv.san_current if inv else 50) }}
+                        {{ stat_input('伤害加值', 'db_val', inv.db_val if inv else 0) }}
+                        <div class="w-100"></div>
+                        {{ stat_input('生命上限', 'hp_max', inv.hp_max if inv else 10) }}
+                        {{ stat_input('魔法上限', 'mp_max', inv.mp_max if inv else 10) }}
+
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header"><i class="fas fa-address-book"></i> 调查员技能</div>
+                <div class="card-body">
+                    <div class="row g-2 justify-content-center">
+                        {% macro stat_input(label, name, value) %}
+                        <div class="col-6 col-md-2">
+                            <div class="stat-box">
+                                <label class="d-block small text-muted mb-1">{{ label }}</label>
+                                <input type="number" class="form-control form-control-sm text-center fw-bold"
+                                       name="{{ name }}" value="{{ value }}">
+                            </div>
+                        </div>
+                        {% endmacro %}
+
+                        {% macro custom_skill_input(category, name_field, val_field, name_val, val_val) %}
+                        <div class="col-6 col-md-2"> <div class="stat-box position-relative">
+                                <div class="d-flex align-items-center justify-content-center mb-1">
+                                    <span class="text-muted text-nowrap" style="font-size: 0.75rem;">{{ category }}:</span>
+
+                                    <input type="text"
+                                           class="form-control form-control-sm custom-skill-name ps-1"
+                                           placeholder="请输入..."
+                                           style="min-width: 0;"
+                                           name="{{ name_field }}"
+                                           value="{{ name_val }}">
+                                </div>
+
+                                <input type="number"
+                                       class="form-control form-control-sm text-center fw-bold"
+                                       name="{{ val_field }}"
+                                       value="{{ val_val }}">
+                            </div>
+                        </div>
+                        {% endmacro %}
+
+                        {{ stat_input('克苏鲁神话', 'cthulhu_mythos', inv.cthulhu_mythos if inv else 0) }}
+                        <div class="w-100"></div>
+                        {{ stat_input('信用评级', 'credit_rating', inv.credit_rating if inv else 0) }}
+                        {{ stat_input('侦察', 'spot_hidden', inv.spot_hidden if inv else 25) }}
+                        {{ stat_input('聆听', 'listen', inv.listen if inv else 20) }}
+                        {{ stat_input('图书馆使用', 'library_use', inv.library_use if inv else 20) }}
+                        <div class="w-100"></div>
+                        {{ stat_input('急救', 'first_aid', inv.first_aid if inv else 30) }}
+                        {{ stat_input('医学', 'medicine', inv.medicine if inv else 1) }}
+                        {{ stat_input('精神分析', 'psychoanalysis', inv.psychoanalysis if inv else 1) }}
+                        <div class="w-100"></div>
+                        {{ stat_input('取悦', 'charm', inv.charm if inv else 15) }}
+                        {{ stat_input('话术', 'fast_talk', inv.fast_talk if inv else 5) }}
+                        {{ stat_input('恐吓', 'intimidate', inv.intimidate if inv else 15) }}
+                        {{ stat_input('说服', 'persuade', inv.persuade if inv else 10) }}
+                        <div class="w-100"></div>
+                        {{ stat_input('会计', 'accounting', inv.accounting if inv else 5) }}
+                        {{ stat_input('估价', 'appraise', inv.appraise if inv else 5) }}
+                        {{ stat_input('考古学', 'archaeology', inv.archaeology if inv else 1) }}
+                        {{ stat_input('人类学', 'anthropology', inv.anthropology if inv else 1) }}
+                        {{ stat_input('法律', 'law', inv.law if inv else 5) }}
+                        {{ stat_input('历史', 'history', inv.history if inv else 5) }}
+                        {{ stat_input('神秘学', 'occult', inv.occult if inv else 5) }}
+                        {{ stat_input('博物学', 'natural_world', inv.natural_world if inv else 10) }}
+                        {{ stat_input('心理学', 'psychology', inv.psychology if inv else 10) }}
+                        {{ custom_skill_input(
+                            '科学A',
+                            'science_a_name', 'science_a_val',
+                            inv.science_a_name if inv else '',
+                            inv.science_a_val if inv else 1
+                        ) }}
+                        {{ custom_skill_input(
+                            '科学B',
+                            'science_b_name', 'science_b_val',
+                            inv.science_b_name if inv else '',
+                            inv.science_b_val if inv else 1
+                        ) }}
+                        {{ custom_skill_input(
+                            '科学C',
+                            'science_c_name', 'science_c_val',
+                            inv.science_c_name if inv else '',
+                            inv.science_c_val if inv else 1
+                        ) }}
+                        <div class="w-100"></div>
+                        {{ stat_input('骑术', 'ride', inv.ride if inv else 5) }}
+                        {{ stat_input('汽车驾驶', 'drive_auto', inv.drive_auto if inv else 5) }}
+                        {{ custom_skill_input(
+                            '载具驾驶',
+                            'drive_a_name', 'drive_a_val',
+                            inv.drive_a_name if inv else '',
+                            inv.drive_a_val if inv else 1
+                        ) }}
+                        <div class="w-100"></div>
+                        {{ stat_input('锁匠', 'locksmith', inv.locksmith if inv else 5) }}
+                        {{ stat_input('机械维修', 'mech_repair', inv.mech_repair if inv else 10) }}
+                        {{ stat_input('电气维修', 'elec_repair', inv.elec_repair if inv else 10) }}
+                        <div class="w-100"></div>
+                        {{ stat_input('攀爬', 'climb', inv.climb if inv else 20) }}
+                        {{ stat_input('跳跃', 'jump', inv.jump if inv else 20) }}
+                        {{ stat_input('游泳', 'swim', inv.locksmith if inv else 20) }}
+                        {{ stat_input('潜行', 'stealth', inv.stealth if inv else 20) }}
+                        {{ stat_input('追踪', 'track', inv.track if inv else 10) }}
+                        {{ stat_input('快手', 'sleight_of_hand', inv.sleight_of_hand if inv else 10) }}
+                        {{ stat_input('乔装', 'disguise', inv.disguise if inv else 5) }}
+                        {{ stat_input('导航', 'navigate', inv.navigate if inv else 10) }}
+                        {{ stat_input('生存', 'survival', inv.survival if inv else 10) }}
+                        <div class="w-100"></div>
+                        {{ stat_input('闪避(敏捷/2)', 'dodge', inv.dodge if inv else 25) }}
+                        {{ stat_input('投掷', 'throw', inv.throw if inv else 20) }}
+                        {{ stat_input('格斗：斗殴', 'fighting_brawl', inv.fighting_brawl if inv else 25) }}
+                        {{ custom_skill_input(
+                            '格斗B',
+                            'fighting_b_name', 'fighting_b_val',
+                            inv.fighting_b_name if inv else '',
+                            inv.fighting_b_val if inv else 1
+                        ) }}
+                        {{ custom_skill_input(
+                            '格斗C',
+                            'fighting_c_name', 'fighting_c_val',
+                            inv.fighting_c_name if inv else '',
+                            inv.fighting_c_val if inv else 1
+                        ) }}
+                        {{ stat_input('射击：手枪', 'firearms_handgun', inv.firearms_handgun if inv else 25) }}
+                        {{ stat_input('射击：步枪', 'firearms_rifle', inv.firearms_rifle if inv else 25) }}
+                        {{ custom_skill_input(
+                            '射击C',
+                            'firearms_c_name', 'firearms_c_val',
+                            inv.firearms_c_name if inv else '',
+                            inv.firearms_c_val if inv else 1
+                        ) }}
+                        <div class="w-100"></div>
+                        {{ stat_input('母语(教育)', 'language', inv.language if inv else 25) }}
+                        {{ custom_skill_input(
+                            '第二语言',
+                            'language_b_name', 'language_b_val',
+                            inv.language_b_name if inv else '',
+                            inv.language_b_val if inv else 1
+                        ) }}
+                        {{ custom_skill_input(
+                            '第三语言',
+                            'language_c_name', 'language_c_val',
+                            inv.language_c_name if inv else '',
+                            inv.language_c_val if inv else 1
+                        ) }}
+                        {{ custom_skill_input(
+                            '技艺A',
+                            'craft_a_name', 'craft_a_val',
+                            inv.craft_a_name if inv else '',
+                            inv.craft_a_val if inv else 1
+                        ) }}
+                        {{ custom_skill_input(
+                            '技艺B',
+                            'craft_b_name', 'craft_b_val',
+                            inv.craft_b_name if inv else '',
+                            inv.craft_b_val if inv else 1
+                        ) }}
+
+
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header bg-danger text-white">
+                    <i class="fas fa-skull-crossbones"></i> 战斗与武器
+                </div>
+                <div class="card-body p-3">
+
+                    <div class="row g-2 mb-2 text-muted small fw-bold text-center">
+                        <div class="col-4">武器/技能名称</div>
+                        <div class="col-2">成功率 %</div>
+                        <div class="col-6">伤害 / 描述 (如 1d4+db)</div>
+                    </div>
+
+                    <hr class="my-2">
+
+                    {% macro combat_row_fixed(label, skill_name, skill_val, dmg_name, dmg_val) %}
+                    <div class="row g-2 align-items-center mb-2">
+                        <div class="col-4 text-end align-self-center">
+                            <span class="fw-bold text-dark">{{ label }}</span>
+                        </div>
+                        <div class="col-2">
+                            <input type="number" class="form-control form-control-sm text-center fw-bold"
+                                   name="{{ skill_name }}"
+                                   value="{{ skill_val }}">
+                        </div>
+                        <div class="col-6">
+                            <input type="text" class="form-control form-control-sm"
+                                   placeholder="如: 1d3+db"
+                                   name="{{ dmg_name }}"
+                                   value="{{ dmg_val }}">
+                        </div>
+                    </div>
+                    {% endmacro %}
+
+                    {% macro combat_row_custom(name_field, name_val, skill_field, skill_val, dmg_field, dmg_val, placeholder_name) %}
+                    <div class="row g-2 align-items-center mb-2">
+                        <div class="col-4">
+                            <input type="text" class="form-control form-control-sm text-end"
+                                   placeholder="{{ placeholder_name }}"
+                                   name="{{ name_field }}"
+                                   value="{{ name_val }}">
+                        </div>
+                        <div class="col-2">
+                            <input type="text" class="form-control form-control-sm"
+                                   placeholder="技能值"
+                                   name="{{ dmg_field }}"
+                                   value="{{ dmg_val }}">
+                        </div>
+                        <div class="col-6">
+                            <input type="text" class="form-control form-control-sm"
+                                   placeholder="如: 1d3+db"
+                                   name="{{ dmg_name }}"
+                                   value="{{ dmg_val }}">
+                        </div>
+                    </div>
+                    {% endmacro %}
+
+                    <div class="mb-3">
+                        <h6 class="text-muted border-bottom pb-1 mb-2"><i class="fas fa-fist-raised"></i> 近战格斗</h6>
+
+                        {{ combat_row_fixed(
+                            '格斗(斗殴)',
+                            'fighting_brawl', inv.fighting_brawl if inv else 25,
+                            'fighting_damage_a', inv.fighting_damage_a if inv else ''
+                        ) }}
+
+                        {{ combat_row_custom(
+                            'fighting_b_name', inv.fighting_b_name if inv else '',
+                            'fighting_b_val', inv.fighting_b_val if inv else 0,
+                            'fighting_damage_b', inv.fighting_damage_b if inv else '',
+                            '格斗B'
+                        ) }}
+
+                        {{ combat_row_custom(
+                            'fighting_c_name', inv.fighting_c_name if inv else '',
+                            'fighting_c_val', inv.fighting_c_val if inv else 0,
+                            'fighting_damage_c', inv.fighting_damage_c if inv else '',
+                            '格斗C'
+                        ) }}
+
+                        {{ combat_row_fixed(
+                            '射击(手枪)',
+                            'firearms_handgun', inv.firearms_handgun if inv else 25,
+                            'firearms_damage_a', inv.firearms_damage_a if inv else ''
+                        ) }}
+
+                        {{ combat_row_fixed(
+                            '射击(步枪)',
+                            'firearms_rifle', inv.firearms_rifle if inv else 25,
+                            'firearms_damage_b', inv.firearms_damage_b if inv else ''
+                        ) }}
+
+                        {{ combat_row_custom(
+                            'firearms_c_name', inv.firearms_c_name if inv else '',
+                            'firearms_c_val', inv.firearms_c_val if inv else 0,
+                            'firearms_damage_c', inv.firearms_damage_c if inv else '',
+                            '火器C'
+                        ) }}
+                    </div>
+
+                    <div class="row g-2 align-items-center bg-light p-1 rounded">
+                        <div class="col-4 text-end align-self-center">
+                            <span class="fw-bold text-secondary">闪避</span>
+                        </div>
+                        <div class="col-2">
+                            <input type="number" class="form-control form-control-sm text-center fw-bold"
+                                   name="dodge"
+                                   value="{{ inv.dodge if inv else '' }}"> </div>
+                         <div class="col-6 text-muted small pt-1">
+                            *闪避通常为 敏捷的一半
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header"><i class="fas fa-box"></i> 背包</div>
+                <div class="card-body row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label">物品1</label>
+                        <input type="text" class="form-control" name="item_1" value="{{ inv.item_1 if inv else '' }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">物品2</label>
+                        <input type="text" class="form-control" name="item_2" value="{{ inv.item_2 if inv else '' }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">物品3</label>
+                        <input type="text" class="form-control" name="item_3" value="{{ inv.item_3 if inv else '' }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">物品4</label>
+                        <input type="text" class="form-control" name="item_4" value="{{ inv.item_4 if inv else '' }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">物品5</label>
+                        <input type="text" class="form-control" name="item_5" value="{{ inv.item_5 if inv else '' }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">物品6</label>
+                        <input type="text" class="form-control" name="item_6" value="{{ inv.item_6 if inv else '' }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">物品7</label>
+                        <input type="text" class="form-control" name="item_7" value="{{ inv.item_7 if inv else '' }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">物品8</label>
+                        <input type="text" class="form-control" name="item_8" value="{{ inv.item_8 if inv else '' }}">
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header"><i class="fas fa-user"></i> 背景信息</div>
+                <div class="card-body row g-3">
+                    <div class="col-md-12">
+                        <label class="form-label">形象描述</label>
+                        <input type="text" class="form-control" name="description" value="{{ inv.description if inv else '' }}">
+                    </div>
+                    <div class="col-md-12">
+                        <label class="form-label">思想与信念</label>
+                        <input type="text" class="form-control" name="ideology" value="{{ inv.ideology if inv else '' }}">
+                    </div>
+                    <div class="col-md-12">
+                        <label class="form-label">重要之人</label>
+                        <input type="text" class="form-control" name="significant_people" value="{{ inv.significant_people if inv else '' }}">
+                    </div>
+                    <div class="col-md-12">
+                        <label class="form-label">重要之地</label>
+                        <input type="text" class="form-control" name="significant_location" value="{{ inv.significant_location if inv else '' }}">
+                    </div>
+                    <div class="col-md-12">
+                        <label class="form-label">宝贵之物</label>
+                        <input type="text" class="form-control" name="treasured_possession" value="{{ inv.treasured_possession if inv else '' }}">
+                    </div>
+                    <div class="col-md-12">
+                        <label class="form-label">特质</label>
+                        <input type="text" class="form-control" name="traits" value="{{ inv.traits if inv else '' }}">
+                    </div>
+                    <div class="col-md-12">
+                        <label class="form-label">伤口与伤疤</label>
+                        <input type="text" class="form-control" name="injuries" value="{{ inv.injuries if inv else '' }}">
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header"><i class="fas fa-list-check"></i> 经历模组与掌握法术</div>
+                <div class="card-body row g-3">
+                    <div class="col-md-12">
+                        <label class="form-label">经历模组1</label>
+                        <input type="text" class="form-control" name="history_text_1" value="{{ inv.history_text_1 if inv else '' }}">
+                    </div>
+                    <div class="col-md-12">
+                        <label class="form-label">经历模组2</label>
+                        <input type="text" class="form-control" name="history_text_2" value="{{ inv.history_text_2 if inv else '' }}">
+                    </div>
+                    <div class="col-md-12">
+                        <label class="form-label">经历模组3</label>
+                        <input type="text" class="form-control" name="history_text_3" value="{{ inv.history_text_3 if inv else '' }}">
+                    </div>
+                    <div class="col-md-12">
+                        <label class="form-label">经历模组4</label>
+                        <input type="text" class="form-control" name="history_text_4" value="{{ inv.history_text_4 if inv else '' }}">
+                    </div>
+                    <div class="col-md-12">
+                        <label class="form-label">法术1</label>
+                        <input type="text" class="form-control" name="spells_text_1" value="{{ inv.spells_text_1 if inv else '' }}">
+                    </div>
+                    <div class="col-md-12">
+                        <label class="form-label">法术2</label>
+                        <input type="text" class="form-control" name="spells_text_2" value="{{ inv.spells_text_2 if inv else '' }}">
+                    </div>
+                    <div class="col-md-12">
+                        <label class="form-label">法术3</label>
+                        <input type="text" class="form-control" name="spells_text_3" value="{{ inv.spells_text_3 if inv else '' }}">
+                    </div>
+                    <div class="col-md-12">
+                        <label class="form-label">法术4</label>
+                        <input type="text" class="form-control" name="spells_text_4" value="{{ inv.spells_text_4 if inv else '' }}">
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2 justify-content-end">
+                <a href="/" class="btn btn-secondary">取消</a>
+                <button type="submit" class="btn btn-success px-5">
+                    <i class="fas fa-save"></i> 保存
+                </button>
+            </div>
+            
+            <br>
+            <div class="alert alert-info">
+                提示：技能列表、物品栏等请继续按照上述 `macro` 模式补充在下方。
+            </div>
+
+        </form>
+    </div>
+</div>
+{% endblock %}

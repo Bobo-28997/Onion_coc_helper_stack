@@ -1,0 +1,374 @@
+{% extends "base.html" %}
+
+{% block title %}检验: {{ inv.name }}{% endblock %}
+
+{% block css %}
+<style>
+    /* 模仿 create.html 的样式，但做微调 */
+    .stat-box { background: white; border: 1px solid #dee2e6; border-radius: 0.375rem; padding: 0.5rem; text-align: center; position: relative; }
+    
+    /* 掷骰按钮样式：看起来像标签，但鼠标悬停会变色 */
+    .roll-btn {
+        cursor: pointer;
+        display: block;
+        font-size: 0.75rem;
+        color: #6c757d;
+        background: none;
+        border: none;
+        width: 100%;
+        transition: color 0.2s, font-weight 0.2s;
+    }
+    .roll-btn:hover {
+        color: #0d6efd; /* 蓝色 */
+        font-weight: bold;
+        text-decoration: underline;
+    }
+
+    /* 结果显示区：固定在右下角 */
+    #dice-result-container {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 1050;
+        width: 300px;
+    }
+    
+    /* 只读数值的样式 */
+    .readonly-val {
+        font-weight: bold;
+        font-size: 1.1em;
+        padding-top: 4px;
+        display: block;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>🔎 调查员面板: {{ inv.name }}</h2>
+            <div>
+                <a href="/" class="btn btn-outline-secondary btn-sm">返回列表</a>
+            </div>
+        </div>
+
+        <div id="dice-result-container"></div>
+
+        <form action="/investigators/save_status" method="post">
+            <input type="hidden" name="id" value="{{ inv.id }}">
+
+            <div class="card mb-4 shadow border-primary">
+                <div class="card-header bg-primary text-white"><i class="fas fa-heartbeat"></i> 核心状态 (可编辑)</div>
+                <div class="card-body">
+                    <div class="row g-2 justify-content-center">
+                        {% macro status_input(label, name, value, max_val=None) %}
+                        <div class="col-4 col-md-2">
+                            <div class="stat-box shadow-sm">
+                                <label class="d-block small text-muted mb-1">{{ label }}</label>
+                                <input type="number" class="form-control text-center fw-bold fs-5 text-primary" 
+                                       name="{{ name }}" value="{{ value }}">
+                                {% if max_val %}
+                                <div class="small text-muted mt-1">/ {{ max_val }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endmacro %}
+
+                        {{ status_input('生命 HP', 'hp_current', inv.hp_current, inv.hp_max) }}
+                        {{ status_input('魔法 MP', 'mp_current', inv.mp_current, inv.mp_max) }}
+                        <div class="col-4 col-md-2">
+                            <div class="stat-box shadow-sm">
+                                <button type="button" class="roll-btn"
+                                        hx-post="/investigators/roll_check"
+                                        hx-vals='{"skill_name": "理智检定(SC)", "skill_val": {{ inv.san_current }}}'
+                                        hx-target="#dice-result-container">
+                                    <i class="fas fa-brain"></i> 理智 SAN
+                                </button>
+
+                                <input type="number" class="form-control text-center fw-bold fs-5 text-primary"
+                                        name="san_current" value="{{ inv.san_current }}">
+
+                                <div class="small text-muted mt-1">
+                                    / {{ 99 - inv.cthulhu_mythos }}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-4 col-md-2">
+                             <div class="stat-box">
+                                <button type="button" class="roll-btn"
+                                    hx-post="/investigators/roll_check"
+                                    hx-vals='{"skill_name": "幸运", "skill_val": {{ inv.luck_stat }}}'
+                                    hx-target="#dice-result-container">
+                                    <i class="fas fa-dice-d20"></i> 幸运
+                                </button>
+                                <input type="number" class="form-control text-center fw-bold" 
+                                       name="luck_stat" value="{{ inv.luck_stat }}">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-8">
+                    
+                    <div class="card mb-3 shadow-sm">
+                        <div class="card-header"><i class="fas fa-chart-bar"></i> 属性检定 (点击名称投骰)</div>
+                        <div class="card-body">
+                            <div class="row g-2">
+                                {% macro stat_roll(label, val, char_name) %}
+                                <div class="col-3 col-md-2">
+                                    <div class="stat-box bg-light">
+                                        <button type="button" class="roll-btn"
+                                                hx-post="/investigators/roll_check"
+                                                hx-vals='{"skill_name": "{{ label }}", "skill_val": {{ val }}, "inv_name": "{{ char_name }}"}'
+                                                hx-target="#dice-result-container">
+                                            {{ label }}
+                                        </button>
+                                        <span class="readonly-val">{{ val }}</span>
+                                    </div>
+                                </div>
+                                {% endmacro %}
+
+                                {{ stat_roll('力量', inv.str_stat, inv.name) }}
+                                {{ stat_roll('敏捷', inv.dex_stat, inv.name) }}
+                                {{ stat_roll('意志', inv.pow_stat, inv.name) }}
+                                {{ stat_roll('体质', inv.con_stat, inv.name) }}
+                                {{ stat_roll('外貌', inv.app_stat, inv.name) }}
+                                {{ stat_roll('体型', inv.siz_stat, inv.name) }}
+                                {{ stat_roll('智力', inv.int_stat, inv.name) }}
+                                {{ stat_roll('教育', inv.edu_stat, inv.name) }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card mb-3 shadow-sm">
+                        <div class="card-header"><i class="fas fa-book"></i> 技能检定</div>
+                        <div class="card-body">
+                            <div class="row g-2">
+                                {% macro skill_roll(label, val, char_name) %}
+                                    {% if val and val > 0 %} <div class="col-4 col-md-3">
+                                        <div class="stat-box">
+                                            <button type="button" class="roll-btn"
+                                                    hx-post="/investigators/roll_check"
+                                                    hx-vals='{"skill_name": "{{ label }}", "skill_val": {{ val }}, "char_name": "{{ inv.name }}"}'
+                                                    hx-target="#dice-result-container">
+                                                {{ label }}
+                                            </button>
+                                            <span class="readonly-val">{{ val }}</span>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                {% endmacro %}
+
+                                {{ skill_roll('信用', inv.credit_rating, inv.name) }}
+                                {{ skill_roll('侦察', inv.spot_hidden, inv.name) }}
+                                {{ skill_roll('聆听', inv.listen, inv.name) }}
+                                {{ skill_roll('图书馆', inv.library_use, inv.name) }}
+                                {{ skill_roll('急救', inv.first_aid, inv.name) }}
+                                {{ skill_roll('心理学', inv.psychology, inv.name) }}
+                                {{ skill_roll('医学', inv.medicine, inv.name) }}
+                                {{ skill_roll('精神分析', inv.psychoanalysis, inv.name) }}
+                                {{ skill_roll('取悦', inv.charm, inv.name) }}
+                                {{ skill_roll('话术', inv.fast_talk, inv.name) }}
+                                {{ skill_roll('说服', inv.persuade, inv.name) }}
+                                {{ skill_roll('恐吓', inv.intimidate, inv.name) }}
+                                {{ skill_roll('斗殴', inv.fighting_brawl, inv.name) }}
+                                {{ skill_roll('闪避', inv.dodge, inv.name) }}
+                                {{ skill_roll('射击:手枪', inv.firearms_handgun, inv.name) }}
+                                {{ skill_roll('投掷', inv.throw, inv.name) }}
+                                {% if inv.fighting_b_name %}{{ skill_roll(inv.fighting_b_name, inv.fighting_b_val, inv.name) }}{% endif %}
+                                {% if inv.fighting_c_name %}{{ skill_roll(inv.fighting_c_name, inv.fighting_c_val, inv.name) }}{% endif %}
+                                {{ skill_roll('射击:步枪', inv.firearms_rifle) }}
+                                {% if inv.firearms_c_name %}{{ skill_roll(inv.firearms_c_name, inv.firearms_c_val, inv.name) }}{% endif %}
+                                {{ skill_roll('克苏鲁神话', inv.cthulhu_mythos, inv.name) }}
+                                {{ skill_roll('会计', inv.accounting, inv.name) }}
+                                {{ skill_roll('估价', inv.appraise, inv.name) }}
+                                {{ skill_roll('考古学', inv.archaeology, inv.name) }}
+                                {{ skill_roll('人类学', inv.anthropology, inv.name) }}
+                                {{ skill_roll('法律', inv.law, inv.name) }}
+                                {{ skill_roll('历史', inv.history, inv.name) }}
+                                {{ skill_roll('神秘学', inv.occult, inv.name) }}
+                                {{ skill_roll('博物学', inv.natural_world, inv.name) }}
+                                {% if inv.science_a_name %}{{ skill_roll(inv.science_a_name, inv.science_a_val, inv.name) }}{% endif %}
+                                {% if inv.science_b_name %}{{ skill_roll(inv.science_b_name, inv.science_b_val, inv.name) }}{% endif %}
+                                {% if inv.science_c_name %}{{ skill_roll(inv.science_c_name, inv.science_c_val, inv.name) }}{% endif %}
+                                {{ skill_roll('骑术', inv.ride, inv.name) }}
+                                {{ skill_roll('汽车驾驶', inv.drive_auto, inv.name) }}
+                                {% if inv.drive_a_name %}{{ skill_roll(inv.drive_a_name, inv.drive_a_val, inv.name) }}{% endif %}
+                                {{ skill_roll('锁匠', inv.locksmith, inv.name) }}
+                                {{ skill_roll('机械维修', inv.mech_repair, inv.name) }}
+                                {{ skill_roll('电气维修', inv.elec_repair, inv.name) }}
+                                {{ skill_roll('攀爬', inv.climb, inv.name) }}
+                                {{ skill_roll('跳跃', inv.jump, inv.name) }}
+                                {{ skill_roll('游泳', inv.swim, inv.name) }}
+                                {{ skill_roll('潜行', inv.stealth, inv.name) }}
+                                {{ skill_roll('追踪', inv.track, inv.name) }}
+                                {{ skill_roll('快手', inv.sleight_of_hand, inv.name) }}
+                                {{ skill_roll('乔装', inv.disguise, inv.name) }}
+                                {{ skill_roll('导航', inv.navigate, inv.name) }}
+                                {{ skill_roll('生存', inv.survival, inv.name) }}
+                                {{ skill_roll('母语', inv.language, inv.name) }}
+                                {% if inv.language_b_name %}{{ skill_roll(inv.language_b_name, inv.language_b_val, inv.name) }}{% endif %}
+                                {% if inv.language_c_name %}{{ skill_roll(inv.language_c_name, inv.language_c_val, inv.name) }}{% endif %}
+                                {% if inv.craft_a_name %}{{ skill_roll(inv.craft_a_name, inv.craft_a_val, inv.name) }}{% endif %}
+                                {% if inv.craft_b_name %}{{ skill_roll(inv.craft_b_name, inv.craft_b_val, inv.name) }}{% endif %}
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    
+                    <div class="card mb-3 shadow-sm border-danger">
+                        <div class="card-header bg-danger text-white"><i class="fas fa-skull"></i> 武器与伤害 (可编辑)</div>
+                        <div class="card-body p-2">
+                            <div class="alert alert-light p-1 mb-2 small text-center">
+                                DB: <strong>{{ inv.db_val }}</strong> | 
+                                Build: <strong>{{ inv.build_val if inv.build_val else 0 }}</strong>
+                            </div>
+                            
+                            <div class="mb-2">
+                                <label class="small text-muted">斗殴 ({{ inv.fighting_brawl }})</label>
+                                <input type="text" class="form-control form-control-sm" 
+                                       name="fighting_damage_a" value="{{ inv.fighting_damage_a }}" placeholder="伤害公式">
+                            </div>
+                            {% if inv.fighting_b_name %}
+                            <div class="mb-2">
+                                <label class="small text-muted">{{ inv.fighting_b_name }} ({{ inv.fighting_b_val }})</label>
+                                <input type="text" class="form-control form-control-sm"
+                                    name="fighting_damage_b" value="{{ inv.fighting_damage_b }}" placeholder="伤害公式">
+                            </div>
+                            {% endif %}
+                            {% if inv.fighting_c_name %}
+                            <div class="mb-2">
+                                <label class="small text-muted">{{ inv.fighting_c_name }} ({{ inv.fighting_c_val }})</label>
+                                <input type="text" class="form-control form-control-sm"
+                                    name="fighting_damage_c" value="{{ inv.fighting_damage_c }}" placeholder="伤害公式">
+                            </div>
+                            {% endif %}
+                             <div class="mb-2">
+                                <label class="small text-muted">手枪 ({{ inv.firearms_handgun }})</label>
+                                <input type="text" class="form-control form-control-sm" 
+                                       name="firearms_damage_a" value="{{ inv.firearms_damage_a }}" placeholder="伤害公式">
+                            </div>
+                            <div class="mb-2">
+                                <label class="small text-muted">步枪 ({{ inv.firearms_rifle }})</label>
+                                <input type="text" class="form-control form-control-sm"
+                                       name="firearms_damage_b" value="{{ inv.firearms_damage_b }}" placeholder="伤害公式">
+                            </div>
+                            {% if inv.firearms_c_name %}
+                            <div class="mb-2">
+                                <label class="small text-muted">{{ inv.firearms_c_name }} ({{ inv.firearms_c_val }})</label>
+                                <input type="text" class="form-control form-control-sm"
+                                    name="firearms_damage_c" value="{{ inv.firearms_damage_c }}" placeholder="伤害公式">
+                            </div>
+                            {% endif %}
+                            </div>
+                    </div>
+
+                    <div class="card mb-3 shadow-sm border-info">
+                        <div class="card-header bg-info text-white text-center py-1 small">
+                            <i class="fas fa-dice-d6"></i> 自定义骰子 (1dX)
+                        </div>
+                        <div class="card-body p-2">
+                            <div class="row g-1 align-items-center">
+
+                                <div class="col-4">
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text px-1 text-muted">d</span>
+                                        <input type="number" class="form-control text-center fw-bold"
+                                               id="custom_dice_sides"
+                                               name="sides"
+                                               value="6" min="1" placeholder="面">
+                                        <input type="hidden" name="inv_name" value="{{ inv.name }}" id="hidden_inv_name">
+                                    </div>
+                                </div>
+
+                                <div class="col-4">
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-dark w-100"
+                                            hx-post="/investigators/roll_custom"
+                                            hx-target="#custom-dice-output"
+                                            hx-include="#custom_dice_sides, #hidden_inv_name">
+                                        <i class="fas fa-random"></i> 投掷
+                                    </button>
+                                </div>
+
+                                <div class="col-4">
+                                    <div id="custom-dice-output"
+                                         class="form-control form-control-sm text-center fw-bold text-danger bg-light"
+                                         style="min-height: 31px;">
+                                        -
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card mb-3 shadow-sm">
+                        <div class="card-header"><i class="fas fa-box-open"></i> 随身物品 (可编辑)</div>
+                        <div class="card-body p-2 row g-2">
+                            <div class="col-12"><input type="text" class="form-control form-control-sm" name="item_1" value="{{ inv.item_1 }}"></div>
+                            <div class="col-12"><input type="text" class="form-control form-control-sm" name="item_2" value="{{ inv.item_2 }}"></div>
+                            <div class="col-12"><input type="text" class="form-control form-control-sm" name="item_3" value="{{ inv.item_3 }}"></div>
+                            <div class="col-12"><input type="text" class="form-control form-control-sm" name="item_4" value="{{ inv.item_4 }}"></div>
+                            <div class="col-12"><input type="text" class="form-control form-control-sm" name="item_5" value="{{ inv.item_5 }}"></div>
+                            <div class="col-12"><input type="text" class="form-control form-control-sm" name="item_6" value="{{ inv.item_6 }}"></div>
+                            <div class="col-12"><input type="text" class="form-control form-control-sm" name="item_7" value="{{ inv.item_7 }}"></div>
+                            <div class="col-12"><input type="text" class="form-control form-control-sm" name="item_8" value="{{ inv.item_8 }}"></div>
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2 sticky-top" style="top: 20px; z-index: 100;">
+                        <button type="submit" class="btn btn-success btn-lg shadow">
+                            <i class="fas fa-save"></i> 更新状态
+                        </button>
+                        <div class="text-center small text-muted">点击更新后刷新页面</div>
+                    </div>
+
+                </div>
+            </div>
+
+            {% if inv.spells_text_1 or inv.spells_text_2 or inv.spells_text_3 or inv.spells_text_4 %}
+            <div class="card mt-2 mb-2">
+                <div class="card-header">
+                    <i class="fas fa-magic"></i> 掌握法术
+                </div>
+                <div class="card-body small">
+                    {% if inv.spells_text_1 %}
+                    <strong>法术1:</strong>{{ inv.spells_text_1 }}
+                    {% endif %}
+
+                    {% if inv.spells_text_2 %}
+                    <strong>法术2:</strong>{{ inv.spells_text_2 }}
+                    {% endif %}
+
+                    {% if inv.spells_text_3 %}
+                    <strong>法术3:</strong>{{ inv.spells_text_3 }}
+                    {% endif %}
+
+                    {% if inv.spells_text_4 %}
+                    <strong>法术4:</strong>{{ inv.spells_text_4 }}
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="card mt-3 mb-4 text-muted">
+                <div class="card-header">背景摘要</div>
+                <div class="card-body small">
+                   <p><strong>形象:</strong> {{ inv.description }}</p>
+                   <p><strong>特质:</strong> {{ inv.traits }}</p>
+                </div>
+            </div>
+
+        </form>
+    </div>
+</div>
+{% endblock %}
