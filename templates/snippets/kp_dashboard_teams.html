@@ -1,0 +1,111 @@
+    {% for team_name, members in teams.items() %}
+    <div class="card mb-4 shadow">
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="fas fa-users"></i> 队伍: {{ team_name }}
+            </h5>
+            <div class="btn-group btn-group-sm">
+                <span class="btn btn-outline-light disabled">暗投:</span>
+                <button class="btn btn-outline-light"
+                        hx-post="/kp/mass_roll" hx-vals='{"team_name": "{{ team_name }}", "skill_key": "listen", "skill_label": "聆听"}' hx-target="#mass-roll-result-{{ loop.index }}">
+                    👂 聆听
+                </button>
+                <button class="btn btn-outline-light"
+                        hx-post="/kp/mass_roll" hx-vals='{"team_name": "{{ team_name }}", "skill_key": "spot_hidden", "skill_label": "侦察"}' hx-target="#mass-roll-result-{{ loop.index }}">
+                    👁️ 侦察
+                </button>
+                <button class="btn btn-outline-light"
+                        hx-post="/kp/mass_roll" hx-vals='{"team_name": "{{ team_name }}", "skill_key": "con_stat", "skill_label": "体质"}' hx-target="#mass-roll-result-{{ loop.index }}">
+                    💪 体质
+                </button>
+                <button class="btn btn-outline-light"
+                        hx-post="/kp/mass_roll" hx-vals='{"team_name": "{{ team_name }}", "skill_key": "dodge", "skill_label": "闪避"}' hx-target="#mass-roll-result-{{ loop.index }}">
+                    🏃 闪避
+                </button>
+            </div>
+        </div>
+
+        <div class="card-body p-0">
+            <div id="mass-roll-result-{{ loop.index }}"></div>
+
+            <div class="table-responsive">
+                <table class="table table-hover table-striped mb-0 align-middle">
+                    <thead class="table-secondary small">
+                        <tr>
+                            <th>DEX</th>
+                            <th style="width: 50px;">ID</th>
+                            <th>姓名</th>
+                            <th style="width: 150px;">HP (血量)</th>
+                            <th style="width: 100px;">SAN (理智)</th>
+                            <th style="width: 100px;">MP (魔法)</th>
+                            <th>核心技能</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for inv in members %}
+                        <tr class="{% if inv.card_type == 'monster' %}table-danger{% endif %}">
+                            <td class="fw-bold text-muted">{{ inv.dex_stat }}</td>
+                            <td class="text-muted small">{{ inv.id }}</td>
+                            <td>
+                                <strong>
+                                    {% if inv.card_type == 'monster' %}🐙 {% endif %}
+                                    {% if inv.card_type == 'npc' %}🔵 {% endif %}
+                                    <a href="/investigators/inspect/{{ inv.id }}" target="_blank" class="text-decoration-none text-dark">{{ inv.name }}</a>
+                                </strong>
+                                <br>
+                                <span class="badge bg-light text-dark border">{{ inv.occupation }}</span>
+                            </td>
+
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <button class="btn btn-xs btn-outline-danger py-0 px-1 me-1"
+                                            hx-post="/kp/quick_change" hx-vals='{"inv_id": {{ inv.id }}, "field": "hp_current", "delta": -1}' hx-target="#hp-val-{{ inv.id }}">-1</button>
+
+                                    <span id="hp-val-{{ inv.id }}" class="fw-bold mx-1 {{ 'text-danger' if inv.hp_current < 5 else 'text-success' }}">
+                                        {{ inv.hp_current }}
+                                    </span>
+
+                                    <span class="text-muted small me-1">/{{ inv.hp_max }}</span>
+
+                                    <button class="btn btn-xs btn-outline-success py-0 px-1 ms-1"
+                                            hx-post="/kp/quick_change" hx-vals='{"inv_id": {{ inv.id }}, "field": "hp_current", "delta": 1}' hx-target="#hp-val-{{ inv.id }}">+1</button>
+                                </div>
+                                <div class="progress mt-1" style="height: 3px;">
+                                    <div class="progress-bar bg-danger" role="progressbar" style="width: {{ (inv.hp_current / inv.hp_max) * 100 }}%"></div>
+                                </div>
+                            </td>
+
+                            <td>
+                                <span class="fw-bold">{{ inv.san_current }}</span>
+                                <span class="text-muted small">/{{ 99 - inv.cthulhu_mythos }}</span>
+                            </td>
+
+                             <td>
+                                <span class="text-muted">{{ inv.mp_current }}</span>
+                                <span class="text-muted small">/{{ inv.mp_max }}</span>
+                             </td>
+
+                            <td class="small">
+                                <div>👁️ {{ inv.spot_hidden }} | 👂 {{ inv.listen }}</div>
+                                <div>👊 {{ inv.fighting_brawl }} | 🔫 {{ inv.firearms_handgun }}</div>
+                            </td> <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="/investigators/inspect/{{ inv.id }}" class="btn btn-outline-success" title="检验">
+                                        <i class="fas fa-clipboard-check"></i>
+                                    </a>
+                                    <a href="/investigators/edit/{{ inv.id }}" class="btn btn-outline-primary" title="编辑">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                </div>
+                            </td>
+
+
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endfor %}

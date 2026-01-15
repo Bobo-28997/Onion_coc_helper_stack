@@ -104,3 +104,21 @@ async def quick_change(
         # 返回新的数值字符串
         return str(new_val)
     return "Err"
+
+@router.get("/dashboard/content", response_class=HTMLResponse)
+async def kp_dashboard_content(request: Request, session: Session = Depends(get_session)):
+    """只返回 KP 面板的队伍列表内容"""
+    # 逻辑和 dashboard 接口一样，查询并分组
+    statement = select(Investigator).order_by(Investigator.team_name, Investigator.dex_stat.desc())
+    all_invs = session.exec(statement).all()
+
+    teams = {}
+    for inv in all_invs:
+        if inv.team_name not in teams:
+            teams[inv.team_name] = []
+        teams[inv.team_name].append(inv)
+
+    return templates.TemplateResponse("snippets/kp_dashboard_teams.html", {
+        "request": request,
+        "teams": teams
+    })

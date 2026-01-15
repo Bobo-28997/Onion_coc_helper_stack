@@ -175,6 +175,14 @@ async def save_status(
     # 重定向回 inspection 页面
     return RedirectResponse(url=f"/investigators/inspect/{inv_id}", status_code=303)
 
+#调查员名单轮询同步更新专用
+@router.get("/list/rows", response_class=HTMLResponse)
+async def get_investigator_rows(request: Request, session: Session = Depends(get_session)):
+    # 逻辑与首页列表一致，只是返回的模板不同
+    statement = select(Investigator).where(Investigator.card_type == "player")
+    results = session.exec(statement).all()
+    return templates.TemplateResponse("snippets/investigator_rows.html", {"request": request, "investigators": results})
+
 @router.get("/create", response_class=HTMLResponse)
 async def create_form(request: Request):
     """显示创建空表单"""

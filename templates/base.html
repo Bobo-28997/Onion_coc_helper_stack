@@ -90,7 +90,7 @@
 
             <div id="log-container"
                 hx-get="/logs/latest"
-                hx-trigger="load, newDiceRoll from:body"
+                hx-trigger="load, newDiceRoll from:body, every 3s"
                 hx-target="this">
                 <div class="text-center mt-3"><div class="spinner-border text-secondary"></div></div>
             </div>
