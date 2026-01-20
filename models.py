@@ -39,6 +39,7 @@ class Investigator(SQLModel, table=True):
     hp_max: int = Field(default=10)  # 生命上限
     mp_max: int = Field(default=10)  # 魔法上限
     db_val: str = Field(default="0")  # 伤害加值 (通常是字符串如 +1d4)
+    build_stat: int = Field(default=0)
 
     # 3. 当前属性
     san_current: int = Field(default=50)

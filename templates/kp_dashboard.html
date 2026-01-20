@@ -6,6 +6,9 @@
 <div class="container-fluid px-4">
     <h2 class="mb-4"><i class="fas fa-dungeon"></i> 守密人帷幕 </h2>
 
+    <div id="kp-toast-container" style="position: fixed; bottom: 20px; right: 20px; z-index: 9999; width: 350px; display: flex; flex-direction: column-reverse; gap: 10px;">
+        </div>
+
     <div id="kp-dashboard-container"
          hx-get="/kp/dashboard/content"
          hx-trigger="every 2s"

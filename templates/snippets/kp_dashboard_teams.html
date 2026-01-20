@@ -7,26 +7,25 @@
             <div class="btn-group btn-group-sm">
                 <span class="btn btn-outline-light disabled">暗投:</span>
                 <button class="btn btn-outline-light"
-                        hx-post="/kp/mass_roll" hx-vals='{"team_name": "{{ team_name }}", "skill_key": "listen", "skill_label": "聆听"}' hx-target="#mass-roll-result-{{ loop.index }}">
+                        hx-post="/kp/mass_roll" hx-vals='{"team_name": "{{ team_name }}", "skill_key": "listen", "skill_label": "聆听"}' hx-target="#kp-toast-container" hx-swap="afterbegin">
                     👂 聆听
                 </button>
                 <button class="btn btn-outline-light"
-                        hx-post="/kp/mass_roll" hx-vals='{"team_name": "{{ team_name }}", "skill_key": "spot_hidden", "skill_label": "侦察"}' hx-target="#mass-roll-result-{{ loop.index }}">
+                        hx-post="/kp/mass_roll" hx-vals='{"team_name": "{{ team_name }}", "skill_key": "spot_hidden", "skill_label": "侦察"}' hx-target="#kp-toast-container" hx-swap="afterbegin">
                     👁️ 侦察
                 </button>
                 <button class="btn btn-outline-light"
-                        hx-post="/kp/mass_roll" hx-vals='{"team_name": "{{ team_name }}", "skill_key": "con_stat", "skill_label": "体质"}' hx-target="#mass-roll-result-{{ loop.index }}">
+                        hx-post="/kp/mass_roll" hx-vals='{"team_name": "{{ team_name }}", "skill_key": "con_stat", "skill_label": "体质"}' hx-target="#kp-toast-container" hx-swap="afterbegin">
                     💪 体质
                 </button>
                 <button class="btn btn-outline-light"
-                        hx-post="/kp/mass_roll" hx-vals='{"team_name": "{{ team_name }}", "skill_key": "dodge", "skill_label": "闪避"}' hx-target="#mass-roll-result-{{ loop.index }}">
+                        hx-post="/kp/mass_roll" hx-vals='{"team_name": "{{ team_name }}", "skill_key": "dodge", "skill_label": "闪避"}' hx-target="#kp-toast-container" hx-swap="afterbegin">
                     🏃 闪避
                 </button>
             </div>
         </div>
 
         <div class="card-body p-0">
-            <div id="mass-roll-result-{{ loop.index }}"></div>
 
             <div class="table-responsive">
                 <table class="table table-hover table-striped mb-0 align-middle">
