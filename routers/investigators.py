@@ -1,4 +1,7 @@
 import random
+import json
+from urllib.parse import quote
+from fastapi import UploadFile, File
 from fastapi import APIRouter, Request, Depends, Form, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -235,3 +238,61 @@ async def save_investigator(
 
     # 保存后重定向回列表页 (符合 Post-Redirect-Get 模式)
     return RedirectResponse(url="/", status_code=303)
+
+
+@router.get("/export_json/{inv_id}")
+async def export_investigator_json(inv_id: int, session: Session = Depends(get_session)):
+    """
+    导出指定调查员为 JSON 文件
+    """
+    inv = session.get(Investigator, inv_id)
+    if not inv:
+        return Response("角色不存在", status_code=404)
+
+    # 1. 转换为字典
+    data = inv.model_dump()  # 如果 SQLModel 版本较老，可能需要用 .dict()
+
+    # 2. 生成文件名 (URL编码防止中文乱码)
+    filename = f"{inv.name}_{inv.occupation}.json"
+    encoded_filename = quote(filename)
+
+    # 3. 返回 JSON 文件流
+    json_str = json.dumps(data, ensure_ascii=False, indent=2)
+    return Response(
+        content=json_str,
+        media_type="application/json",
+        headers={"Content-Disposition": f"attachment; filename*=utf-8''{encoded_filename}"}
+    )
+
+
+@router.post("/import_json")
+async def import_investigator_json(
+        file: UploadFile = File(...),
+        session: Session = Depends(get_session)
+):
+    """
+    上传 JSON 文件并导入为新角色
+    """
+    try:
+        # 1. 读取并解析 JSON
+        content = await file.read()
+        data = json.loads(content)
+
+        # 2. 清洗数据：移除 id (让数据库自动生成新ID)
+        if "id" in data:
+            del data["id"]
+
+        # 3. 创建新对象 (利用 **data 解包)
+        new_inv = Investigator(**data)
+
+        # 4. 为了区分，可以在名字后面加个标记，或者直接存
+        # new_inv.name = f"{new_inv.name} (导入)"
+
+        session.add(new_inv)
+        session.commit()
+
+        # 5. 导入成功后回到列表页
+        return RedirectResponse(url="/", status_code=303)
+
+    except Exception as e:
+        return Response(f"导入失败: {str(e)}", status_code=400)

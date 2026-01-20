@@ -5,9 +5,18 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1>🗃️ 调查员名册</h1>
-    <a href="/investigators/create" class="btn btn-primary">
-        <i class="fas fa-plus"></i> 新建调查员
-    </a>
+
+    <div class="d-flex gap-2">
+        <form action="/investigators/import_json" method="post" enctype="multipart/form-data" class="d-inline">
+            <input type="file" name="file" id="importFile" style="display: none;" onchange="this.form.submit()" accept=".json">
+            <button type="button" class="btn btn-outline-secondary" onclick="document.getElementById('importFile').click()">
+                <i class="fas fa-file-import"></i> 导入JSON角色卡
+                </button>
+        </form>
+        <a href="/investigators/create" class="btn btn-primary">
+            <i class="fas fa-plus"></i> 新建调查员
+        </a>
+    </div>
 </div>
 
 <div class="card shadow-sm">

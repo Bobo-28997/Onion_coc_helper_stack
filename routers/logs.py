@@ -5,6 +5,9 @@ from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, select
 from database import get_session
 from models import DiceLog
+import csv
+import io
+from fastapi.responses import StreamingResponse # 用于流式下载文件
 
 # 注意：prefix 设置为 "/logs"，tags 用于自动文档归类
 router = APIRouter(prefix="/logs", tags=["logs"])
@@ -51,3 +54,40 @@ async def add_note(
     logs = session.exec(statement).all()
     return templates.TemplateResponse("log_list.html", {"request": request, "logs": logs})
 
+
+@router.get("/export_csv")
+async def export_logs_csv(session: Session = Depends(get_session)):
+    """
+    导出所有投骰日志为 CSV 文件
+    """
+    # 1. 查询所有日志 (按时间倒序)
+    statement = select(DiceLog).order_by(DiceLog.created_at.desc())
+    logs = session.exec(statement).all()
+
+    # 2. 使用 StringIO 在内存中构建 CSV
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    # 写表头
+    writer.writerow(["ID", "时间", "调查员", "动作", "结果文本", "结果类型"])
+
+    # 写数据
+    for log in logs:
+        writer.writerow([
+            log.id,
+            log.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+            log.investigator_name,
+            log.action_name,
+            log.result_text,
+            log.result_color
+        ])
+
+    # 指针回到开头
+    output.seek(0)
+
+    # 3. 返回流式响应
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=coc_dice_logs.csv"}
+    )
