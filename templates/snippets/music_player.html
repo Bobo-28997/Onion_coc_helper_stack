@@ -1,0 +1,373 @@
+<div id="kp-music-player" class="fixed-bottom bg-dark text-white shadow-lg border-top border-secondary" style="z-index: 2000; transition: transform 0.3s;">
+    <div class="progress" style="height: 4px; background-color: #343a40; border-radius: 0; cursor: pointer;" id="music-seek-container">
+        <div id="music-progress-bar" class="progress-bar bg-info" role="progressbar" style="width: 0%; transition: none;"></div>
+    </div>
+
+    <div class="container-fluid py-2 d-flex align-items-center justify-content-between">
+        <div class="d-flex align-items-center gap-3 overflow-hidden" style="max-width: 40%;">
+            <input type="file" id="music-file-input" accept=".ogg,.audio/*" class="d-none">
+            <button class="btn btn-sm btn-outline-light flex-shrink-0" onclick="document.getElementById('music-file-input').click()">
+                <i class="fas fa-folder-open"></i> 选曲
+            </button>
+
+            <div class="d-flex flex-column" style="min-width: 0;">
+                <div id="music-track-name" class="fw-bold text-truncate small">未选择音乐</div>
+                <div class="d-flex align-items-center small text-muted">
+                    <span id="music-current-time">0:00</span>
+                    <span class="mx-1">/</span>
+                    <span id="music-duration">0:00</span>
+                    <span id="music-loop-badge" class="badge bg-secondary ms-2" style="font-size: 0.6rem; display: none;">LOOP</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="btn-group">
+            <button id="btn-music-loop" class="btn btn-sm btn-outline-secondary active" title="循环开关">
+                <i class="fas fa-sync-alt"></i>
+            </button>
+            <button id="btn-music-stop" class="btn btn-sm btn-outline-danger" disabled>
+                <i class="fas fa-stop"></i>
+            </button>
+            <button id="btn-music-play" class="btn btn-sm btn-primary px-4" disabled>
+                <i id="icon-music-play" class="fas fa-play"></i>
+                <i id="icon-music-pause" class="fas fa-pause d-none"></i>
+            </button>
+        </div>
+
+        <div class="d-flex align-items-center gap-2 ms-3" style="width: 120px;">
+            <i class="fas fa-volume-down small text-muted"></i>
+            <input type="range" class="form-range" id="music-volume" min="0" max="1" step="0.01" value="0.5">
+        </div>
+
+        <button class="btn btn-sm text-secondary ms-2" onclick="document.getElementById('kp-music-player').style.transform = 'translateY(100%)'">
+            <i class="fas fa-chevron-down"></i>
+        </button>
+    </div>
+</div>
+
+<button class="btn btn-dark btn-sm rounded-circle shadow position-fixed start-0 bottom-0 m-3"
+        style="z-index: 1999;"
+        onclick="document.getElementById('kp-music-player').style.transform = 'translateY(0)'"
+        title="显示音乐播放器">
+    <i class="fas fa-music"></i>
+</button>
+
+<script>
+(function() {
+    // 避免变量污染全局，使用闭包
+    let audioCtx;
+    let audioBuffer = null;
+    let sourceNode = null;
+    let gainNode = null;
+
+    // 播放状态
+    let startTime = 0;
+    let pausedAt = 0;
+    let isPlaying = false;
+    let isLooping = true;
+
+    // 循环点
+    let loopStartSample = -1;
+    let loopLengthSample = -1;
+    let loopStartSec = 0;
+    let loopEndSec = 0;
+    let originalSampleRate = null;
+
+    // DOM 元素
+    const fileInput = document.getElementById('music-file-input');
+    const trackName = document.getElementById('music-track-name');
+    const currentTimeEl = document.getElementById('music-current-time');
+    const durationEl = document.getElementById('music-duration');
+    const loopBadge = document.getElementById('music-loop-badge');
+    const progressBar = document.getElementById('music-progress-bar');
+    const seekContainer = document.getElementById('music-seek-container');
+
+    const btnPlay = document.getElementById('btn-music-play');
+    const btnStop = document.getElementById('btn-music-stop');
+    const btnLoop = document.getElementById('btn-music-loop');
+    const iconPlay = document.getElementById('icon-music-play');
+    const iconPause = document.getElementById('icon-music-pause');
+    const volSlider = document.getElementById('music-volume');
+
+    let uiInterval = null;
+
+    // --- 初始化 ---
+    function initAudio() {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+    }
+
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length) handleFile(e.target.files[0]);
+    });
+
+    // --- 文件处理与元数据解析 ---
+    async function handleFile(file) {
+        initAudio();
+        stopAudio();
+
+        trackName.textContent = "正在解析: " + file.name;
+        trackName.classList.add('text-info');
+
+        const arrayBuffer = await file.arrayBuffer();
+
+        // 1. 解析 OGG 元数据 (LOOPSTART / LOOPLENGTH)
+        const metadata = parseOggMetadata(arrayBuffer);
+
+        // 2. 解码音频
+        try {
+            // 复制一份 buffer 因为 decodeAudioData 会转移所有权
+            const decodeBuffer = arrayBuffer.slice(0);
+            audioBuffer = await audioCtx.decodeAudioData(decodeBuffer);
+
+            // 3. 设置循环点
+            setupLoopPoints(metadata, audioBuffer);
+
+            // UI 更新
+            trackName.textContent = file.name;
+            trackName.classList.remove('text-info');
+            durationEl.textContent = formatTime(audioBuffer.duration);
+
+            btnPlay.disabled = false;
+            btnStop.disabled = false;
+
+            if (loopStartSample > -1) {
+                loopBadge.style.display = "inline-block";
+                loopBadge.textContent = "RPG MAKER LOOP";
+                loopBadge.className = "badge bg-success ms-2";
+            } else {
+                loopBadge.style.display = "none";
+            }
+
+            // 自动开始播放
+            playAudio(0);
+
+        } catch (err) {
+            console.error(err);
+            trackName.textContent = "解码失败";
+            trackName.classList.add('text-danger');
+        }
+    }
+
+    function parseOggMetadata(buffer) {
+        const view = new Uint8Array(buffer);
+        const limit = Math.min(view.length, 50000); // 只扫描前 50KB
+
+        let headerStr = "";
+        for (let i = 0; i < limit; i++) {
+            const code = view[i];
+            // 只提取可见字符，避免乱码干扰正则
+            if (code >= 32 && code <= 126) headerStr += String.fromCharCode(code);
+            else headerStr += " ";
+        }
+
+        const loopStartMatch = headerStr.match(/LOOP_?START\s*=\s*(\d+)/i);
+        const loopLengthMatch = headerStr.match(/LOOP_?LENGTH\s*=\s*(\d+)/i);
+
+        // 解析原始采样率 (修复 44.1k vs 48k 问题)
+        let fileSampleRate = null;
+        for (let i = 0; i < limit - 15; i++) {
+            // OGG Vorbis ID Header: 0x01 'vorbis'
+            if (view[i] === 0x01 && view[i+1] === 0x76 && view[i+2] === 0x6F &&
+                view[i+3] === 0x72 && view[i+4] === 0x62 && view[i+5] === 0x69 && view[i+6] === 0x73) {
+                const offset = i + 12;
+                fileSampleRate = view[offset] | (view[offset+1] << 8) | (view[offset+2] << 16) | (view[offset+3] << 24);
+                break;
+            }
+        }
+
+        return {
+            loopStart: loopStartMatch ? parseInt(loopStartMatch[1]) : -1,
+            loopLength: loopLengthMatch ? parseInt(loopLengthMatch[1]) : -1,
+            sampleRate: fileSampleRate
+        };
+    }
+
+    function setupLoopPoints(metadata, buffer) {
+        loopStartSample = metadata.loopStart;
+        loopLengthSample = metadata.loopLength;
+        // 关键逻辑：使用文件原始采样率计算时间
+        originalSampleRate = metadata.sampleRate || buffer.sampleRate;
+
+        if (loopStartSample > -1) {
+            loopStartSec = loopStartSample / originalSampleRate;
+            if (loopLengthSample > -1) {
+                loopEndSec = (loopStartSample + loopLengthSample) / originalSampleRate;
+            } else {
+                loopEndSec = buffer.duration;
+            }
+        } else {
+            loopStartSec = 0;
+            loopEndSec = buffer.duration;
+        }
+    }
+
+    // --- 播放控制逻辑 ---
+    function playAudio(offsetTime = 0) {
+        if (!audioBuffer) return;
+
+        // 防止重复播放
+        if (sourceNode) { try{sourceNode.stop();}catch(e){} }
+
+        sourceNode = audioCtx.createBufferSource();
+        sourceNode.buffer = audioBuffer;
+
+        if (isLooping) {
+            sourceNode.loop = true;
+            if (loopStartSample > -1) {
+                sourceNode.loopStart = loopStartSec;
+                sourceNode.loopEnd = loopEndSec;
+            } else {
+                sourceNode.loopStart = 0;
+                sourceNode.loopEnd = audioBuffer.duration;
+            }
+        } else {
+            sourceNode.loop = false;
+        }
+
+        sourceNode.onended = () => {
+            if (!isLooping && isPlaying) {
+                // 简单检查是否真的播完了（排除手动stop触发的ended）
+                const t = getCurrentTime();
+                if (t >= audioBuffer.duration - 0.2) {
+                    stopAudio();
+                }
+            }
+        };
+
+        gainNode = audioCtx.createGain();
+        sourceNode.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        gainNode.gain.value = volSlider.value;
+
+        startTime = audioCtx.currentTime - offsetTime;
+        sourceNode.start(0, offsetTime);
+
+        isPlaying = true;
+        updateBtnState();
+        startUiLoop();
+    }
+
+    function stopAudio() {
+        if (sourceNode) {
+            try { sourceNode.stop(); } catch(e){}
+            sourceNode.disconnect();
+            sourceNode = null;
+        }
+        isPlaying = false;
+        pausedAt = 0;
+        updateBtnState();
+        stopUiLoop();
+        progressBar.style.width = '0%';
+        currentTimeEl.textContent = '0:00';
+    }
+
+    function pauseAudio() {
+        if (sourceNode) {
+            try { sourceNode.stop(); } catch(e){}
+            pausedAt = getCurrentTime();
+        }
+        isPlaying = false;
+        updateBtnState();
+        stopUiLoop();
+    }
+
+    function getCurrentTime() {
+        if (!isPlaying) return pausedAt;
+        let elapsed = audioCtx.currentTime - startTime;
+
+        if (isLooping && loopStartSample > -1) {
+            // 处理循环内的显示时间
+            if (elapsed > loopEndSec) {
+                const loopDuration = loopEndSec - loopStartSec;
+                const timeInLoop = (elapsed - loopStartSec) % loopDuration;
+                return loopStartSec + timeInLoop;
+            }
+        }
+        // 防止显示溢出
+        if (elapsed > audioBuffer.duration) return audioBuffer.duration;
+        return elapsed;
+    }
+
+    // --- UI 交互 ---
+
+    // 进度条更新循环（替代 requestAnimationFrame）
+    function startUiLoop() {
+        if (uiInterval) clearInterval(uiInterval);
+        uiInterval = setInterval(() => {
+            const t = getCurrentTime();
+            currentTimeEl.textContent = formatTime(t);
+            const pct = (t / audioBuffer.duration) * 100;
+            progressBar.style.width = pct + '%';
+        }, 200); // 200ms 刷新一次足够了
+    }
+
+    function stopUiLoop() {
+        if (uiInterval) clearInterval(uiInterval);
+    }
+
+    btnPlay.addEventListener('click', () => {
+        if (isPlaying) pauseAudio();
+        else {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            playAudio(pausedAt);
+        }
+    });
+
+    btnStop.addEventListener('click', stopAudio);
+
+    btnLoop.addEventListener('click', () => {
+        isLooping = !isLooping;
+        if (isLooping) {
+            btnLoop.classList.remove('btn-outline-secondary');
+            btnLoop.classList.add('btn-outline-success', 'active');
+        } else {
+            btnLoop.classList.remove('btn-outline-success', 'active');
+            btnLoop.classList.add('btn-outline-secondary');
+        }
+        // 如果正在播放，需要重启以应用新的循环设置
+        if (isPlaying) {
+            const t = getCurrentTime();
+            playAudio(t);
+        }
+    });
+
+    volSlider.addEventListener('input', (e) => {
+        if (gainNode) gainNode.gain.value = e.target.value;
+    });
+
+    // 点击进度条跳转
+    seekContainer.addEventListener('click', (e) => {
+        if (!audioBuffer) return;
+        const rect = seekContainer.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const pct = x / rect.width;
+        pausedAt = pct * audioBuffer.duration;
+
+        if (isPlaying) {
+            playAudio(pausedAt);
+        } else {
+            progressBar.style.width = (pct * 100) + '%';
+            currentTimeEl.textContent = formatTime(pausedAt);
+        }
+    });
+
+    function updateBtnState() {
+        if (isPlaying) {
+            iconPlay.classList.add('d-none');
+            iconPause.classList.remove('d-none');
+        } else {
+            iconPlay.classList.remove('d-none');
+            iconPause.classList.add('d-none');
+        }
+    }
+
+    function formatTime(s) {
+        const m = Math.floor(s / 60);
+        const sec = Math.floor(s % 60);
+        return `${m}:${sec.toString().padStart(2, '0')}`;
+    }
+
+})();
+</script>
